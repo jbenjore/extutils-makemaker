@@ -564,7 +564,7 @@ Defines a lot of macros for distribution support.
 sub init_dist {
     my $self = shift;
 
-    $self->{TAR}      ||= 'tar';
+    $self->{TAR}      ||= $self->_find_tar( $Verbose );
     $self->{TARFLAGS} ||= 'cvf';
     $self->{ZIP}      ||= 'zip';
     $self->{ZIPFLAGS} ||= '-r';

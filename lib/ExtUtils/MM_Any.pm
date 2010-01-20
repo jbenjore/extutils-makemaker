@@ -1024,6 +1024,89 @@ sub blessed {
     return eval { $_[0]->isa("UNIVERSAL"); };
 }
 
+=head3 _find_tar
+
+Finds the TAR executable. Called by init_dist
+
+=cut
+
+# Reference example of bsdtar's help:
+#
+#   $ tar -h
+#   tar(bsdtar): manipulate archive files
+#   ...
+#   bsdtar 2.6.2 - libarchive 2.6.2
+#
+#   $ bsdtar -h
+#   bsdtar: manipulate archive files
+#   ...
+#   bsdtar 2.6.2 - libarchive 2.6.2
+
+sub _find_tar {
+    my ( $self, $trace ) = @_;
+
+    my @names = $self->_tar_names;
+
+     if ($trace >= 2) {
+         print "Looking for GNU tar by these names:
+ @names
+ ";
+     }
+
+    # Find a useable TAR but try to skip over BSD TAR.
+    my $fallback_bsd_tar;
+    for my $i ( 0 .. $#names ) {
+        my $name = $names[$i];
+
+        # TODO: consider redirecting any errors from this away in a
+        # platform neutral way.
+        #
+        #   $null = File::Spec->devnull
+        #   `$name --help 2>$null`
+        #
+        # TODO: The --help idiom is pretty UNIXy and I think I might
+        # be surprised to find it doing that on a Windows computer. I
+        # think \h or \? is more likely but then I think I also don't
+        # worry about BSD tar.
+        #
+        # libarchive promises the word 'bsdtar' will always appear in
+        # the first line of output.
+        #
+        local $?;
+        my $tar_help = `$name --help`;
+        my $is_useable = 0 == $?;
+        my $is_bsdtar = $tar_help =~ /bsdtar/;
+
+        if ( $is_useable ) {
+            if ( $is_bsdtar ) {
+                $fallback_bsd_tar ||= $name;
+            }
+            else {
+                return $name;
+            }
+        }
+    }
+
+    # We found a useable BSD TAR but nothing else. Suck.
+    if ( $fallback_bsd_tar ) {
+        return $fallback_bsd_tar;
+    }
+
+    # We failed to find any TAR so just failover to the first
+    # thing. Maybe it'll work later.
+    return $names[0];
+}
+
+=head3 _tar_names
+
+The program names to check for TAR at
+
+=cut
+
+sub _tar_names {
+    return qw( tar );
+}
+
 sub max {
     return (sort { $b <=> $a } @_)[0];
 }
